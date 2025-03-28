@@ -10,7 +10,8 @@ st.title("🧠 LLM Document Summarizer")
 st.write("Upload a PDF or TXT file and get a bullet-point summary using DeepSeek LLM.")
 
 # Hugging Face API configuration
-API_URL = "https://api-inference.huggingface.co/models/deepseek-ai/Janus-Pro-7B"
+API_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
+
 HF_TOKEN = st.secrets["HF_TOKEN"] if "HF_TOKEN" in st.secrets else os.getenv("HF_TOKEN")
 
 headers = {
