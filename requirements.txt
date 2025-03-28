@@ -1,3 +1,5 @@
 streamlit
 requests
 PyPDF2
+python-docx
+beautifulsoup4

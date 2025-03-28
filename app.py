@@ -1,67 +1,53 @@
 import streamlit as st
-import requests
-import PyPDF2
-import io
-import os
+from document_reader import DocumentReader
+from summarizer import Summarizer
+from config import Config
 
-# Page setup
-st.set_page_config(page_title="LLM Document Summarizer (DeepSeek)", layout="centered")
-st.title("🧠 LLM Document Summarizer")
-st.write("Upload a PDF or TXT file and get a bullet-point summary using DeepSeek LLM.")
+# Streamlit page config
+st.set_page_config(page_title="KL LLM Summarizer", layout="centered")
+st.title("🧠 KL LLM Summarizer")
+st.subheader("Tailored Document Summarization Powered by AI")
 
-# Hugging Face API configuration
-API_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
+# User input (no change)
+upload_type = st.radio("Choose input type:", ["Upload File", "Enter URL"])
 
-HF_TOKEN = st.secrets["HF_TOKEN"] if "HF_TOKEN" in st.secrets else os.getenv("HF_TOKEN")
+content = ""
+if upload_type == "Upload File":
+    uploaded_file = st.file_uploader("Upload PDF, DOCX, or TXT file", type=["pdf", "docx", "txt"])
+    if uploaded_file:
+        content = DocumentReader.extract_content(upload_type, uploaded_file)
+elif upload_type == "Enter URL":
+    url = st.text_input("Paste URL here:")
+    if url:
+        content = DocumentReader.extract_content(upload_type, url)
 
-headers = {
-    "Authorization": f"Bearer {HF_TOKEN}"
-}
+# Summarization style selector
+style = st.selectbox("Select summarization style:", [
+    "Bullet points (concise)",
+    "Detailed paragraph",
+    "Executive summary (formal)"
+])
 
-# Function to read uploaded file
-def read_file(file):
-    if file.type == "application/pdf":
-        reader = PyPDF2.PdfReader(file)
-        text = ""
-        for page in reader.pages:
-            page_text = page.extract_text()
-            if page_text:
-                text += page_text
-        return text
-    elif file.type == "text/plain":
-        return file.read().decode("utf-8")
-    else:
-        return ""
+# LLM model selector (NEW!)
+model_choice = st.selectbox("Choose LLM model:", list(Config.LLM_MODELS.keys()))
 
-# Function to call DeepSeek for summarization
-def summarize_with_deepseek(text):
-    prompt = f"Please summarize the following document in bullet points:\n\n{text}\n\nSummary:"
-    payload = {
-        "inputs": prompt,
-        "parameters": {"max_new_tokens": 512}
-    }
-    response = requests.post(API_URL, headers=headers, json=payload)
-    if response.status_code == 200:
-        output = response.json()
-        return output[0]["generated_text"].split("Summary:")[-1].strip()
-    else:
-        return f"Error: {response.status_code} - {response.text}"
-
-# File uploader
-uploaded_file = st.file_uploader("Upload a PDF or TXT file", type=["pdf", "txt"])
-
-if uploaded_file:
-    with st.spinner("Reading file..."):
-        content = read_file(uploaded_file)
-        content = content.strip()
-        if len(content) > 4000:
-            content = content[:4000] + "\n...[truncated]"
-
-    st.subheader("Document Preview")
-    st.text_area("File Content", content, height=200)
+# Display extracted content
+if content:
+    if len(content) > 4000:
+        content = content[:4000] + "\n...[truncated]"
+    st.subheader("Content Preview")
+    st.text_area("Extracted Content", content, height=150)
 
     if st.button("Summarize"):
-        with st.spinner("Summarizing with DeepSeek..."):
-            summary = summarize_with_deepseek(content)
-        st.subheader("Summary")
+        with st.spinner(f"Generating summary using {model_choice}..."):
+            summary = Summarizer.summarize(content, style, model_choice)
+        st.subheader("Generated Summary")
         st.markdown(summary)
+
+        summary_bytes = summary.encode('utf-8')
+        st.download_button("⬇️ Download Summary", data=summary_bytes,
+                           file_name="summary.txt", mime="text/plain")
+
+# Footer branding
+st.markdown("---")
+st.markdown("🚀 Built by **Your Name**, LLM Freelancer | Kuala Lumpur | [your.email@example.com](mailto:your.email@example.com)")
