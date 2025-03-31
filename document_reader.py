@@ -1,39 +1,38 @@
-import PyPDF2
-import docx
-import requests
-from bs4 import BeautifulSoup
+import pdfplumber
+import re
 
 class DocumentReader:
     @staticmethod
     def read_pdf(file):
-        reader = PyPDF2.PdfReader(file)
-        return "\n".join(page.extract_text() or "" for page in reader.pages)
+        text = ""
+        with pdfplumber.open(file) as pdf:
+            for page in pdf.pages:
+                content = page.extract_text()
+                if content:
+                    text += content + "\n"
+
+        cleaned = DocumentReader.clean_pdf_text(text)
+        return cleaned
 
     @staticmethod
-    def read_txt(file):
-        return file.read().decode("utf-8")
+    def clean_pdf_text(text):
+        # Basic cleaning for academic or structured articles
+        # Skip typical academic headers like abstract, keywords, references
+        lines = text.split("\n")
+        filtered = []
 
-    @staticmethod
-    def read_docx(file):
-        doc = docx.Document(file)
-        return "\n".join([para.text for para in doc.paragraphs])
+        skip_keywords = ["journal", "doi", "received", "abstract", "keywords", "references", "copyright"]
+        end_keywords = ["references", "acknowledgment", "bibliography"]
 
-    @staticmethod
-    def fetch_url(url):
-        res = requests.get(url, timeout=10)
-        res.raise_for_status()
-        soup = BeautifulSoup(res.text, 'html.parser')
-        return ' '.join(p.get_text() for p in soup.find_all('p'))
+        end_section = False
+        for line in lines:
+            lower_line = line.strip().lower()
 
-    @staticmethod
-    def extract_content(upload_type, input_data):
-        if upload_type == "Upload File":
-            if input_data.type == "application/pdf":
-                return DocumentReader.read_pdf(input_data)
-            elif input_data.type == "text/plain":
-                return DocumentReader.read_txt(input_data)
-            elif input_data.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
-                return DocumentReader.read_docx(input_data)
-        elif upload_type == "Enter URL":
-            return DocumentReader.fetch_url(input_data)
-        return ""
+            if any(k in lower_line for k in end_keywords):
+                end_section = True
+
+            if not end_section and not any(k in lower_line for k in skip_keywords):
+                if len(line.strip()) > 0:
+                    filtered.append(line.strip())
+
+        return "\n".join(filtered)
