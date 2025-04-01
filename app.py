@@ -10,7 +10,7 @@ st.title("📄 AI Document Assistant")
 st.markdown("Upload a document and use AI to summarize or ask questions — powered by multiple LLMs.")
 
 # --- Layout ---
-control_col, display_col = st.columns([0,2])
+# control_col, display_col = st.columns([0,2])
 
 # --- Sidebar as Control Panel ---
 with st.sidebar:
@@ -38,13 +38,13 @@ with st.sidebar:
     run_button = st.button("🚀 Run Task")
 
 # --- Main Display ---
-with display_col:
-    desc_col, result_col = st.columns([1, 1])
+# with display_col:
+desc_col, result_col = st.columns([1, 1])
 
-    with desc_col:
-        st.subheader("📊 How This Assistant Works")
-        st.image("/mount/src/ai-doc-assistant/static/ai-process-diagram.png", use_container_width=True)
-        st.markdown("""
+with desc_col:
+    st.subheader("📊 How This Assistant Works")
+    st.image("/mount/src/ai-doc-assistant/static/ai-process-diagram.png", use_container_width=True)
+    st.markdown("""
 **Step-by-step process:**
 1. You upload a file or paste a URL.
 2. You select your goal — summarize or ask a question.
@@ -54,43 +54,43 @@ with display_col:
 6. You review and download the result.
 
 No data is stored. Your content is processed temporarily and only shown to you.
-        """)
+    """)
 
-    with result_col:
-        content = ""
-        if uploaded_file or url:
-            content = DocumentReader.extract_content(upload_type, uploaded_file if uploaded_file else url)
-            content = content.strip()
-            if len(content) > 4000:
-                content = content[:4000] + "\n...[truncated]"
+with result_col:
+    content = ""
+    if uploaded_file or url:
+        content = DocumentReader.extract_content(upload_type, uploaded_file if uploaded_file else url)
+        content = content.strip()
+        if len(content) > 4000:
+            content = content[:4000] + "\n...[truncated]"
 
-        if content:
-            st.subheader("📄 Extracted Content")
-            st.text_area("Preview", content, height=180)
+    if content:
+        st.subheader("📄 Extracted Content")
+        st.text_area("Preview", content, height=180)
 
-        if run_button and content:
-            prompt_builder = PromptBuilder(task=task.lower(), doc_type=doc_type, use_case=use_case)
-            prompt = (
-                prompt_builder.generate((question, content)) if task == "Ask Question"
-                else prompt_builder.generate(content)
-            )
+    if run_button and content:
+        prompt_builder = PromptBuilder(task=task.lower(), doc_type=doc_type, use_case=use_case)
+        prompt = (
+            prompt_builder.generate((question, content)) if task == "Ask Question"
+            else prompt_builder.generate(content)
+        )
 
-            if demo_mode:
-                st.info("Running in Demo Mode: This is a placeholder response.")
-                result = "This is a demo response. Contact ali@contextlabs.dev for the full version with real LLM outputs."
-            else:
-                with st.spinner(f"Running {task} using {model_choice}..."):
-                    summarizer = Summarizer(model_choice)
-                    result = summarizer.summarize(prompt)
+        if demo_mode:
+            st.info("Running in Demo Mode: This is a placeholder response.")
+            result = "This is a demo response. Contact ali@contextlabs.dev for the full version with real LLM outputs."
+        else:
+            with st.spinner(f"Running {task} using {model_choice}..."):
+                summarizer = Summarizer(model_choice)
+                result = summarizer.summarize(prompt)
 
-                if result.lower().startswith("error"):
-                    st.error("Model temporarily unavailable. Try again or select another model.")
+            if result.lower().startswith("error"):
+                st.error("Model temporarily unavailable. Try again or select another model.")
 
-            st.subheader("✅ Result")
-            st.markdown(result)
-            st.download_button("⬇️ Download Result", result.encode("utf-8"), file_name="result.txt", mime="text/plain")
+        st.subheader("✅ Result")
+        st.markdown(result)
+        st.download_button("⬇️ Download Result", result.encode("utf-8"), file_name="result.txt", mime="text/plain")
 
-        st.markdown("""
+    st.markdown("""
 ---
 ### 🔒 Privacy Note
 Your document is processed securely in-memory only. No content is stored or shared.
