@@ -10,7 +10,7 @@ st.title("📄 AI Document Assistant")
 st.markdown("Upload a document and use AI to summarize or ask questions — powered by multiple LLMs.")
 
 # --- Layout ---
-control_col, display_col = st.columns([1, 2])
+control_col, display_col = st.columns([1, 1])
 
 # --- Sidebar as Control Panel ---
 with st.sidebar:
