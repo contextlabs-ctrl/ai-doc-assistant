@@ -58,6 +58,9 @@ No data is stored. Your content is processed temporarily and only shown to you.
 
 with result_col:
     content = ""
+    st.subheader("📄 Extracted Content")
+    st.text_area("Preview", content, height=180)
+    st.subheader("✅ Result")
     if uploaded_file or url:
         content = DocumentReader.extract_content(upload_type, uploaded_file if uploaded_file else url)
         content = content.strip()
@@ -65,7 +68,6 @@ with result_col:
             content = content[:4000] + "\n...[truncated]"
 
     if content:
-        st.subheader("📄 Extracted Content")
         st.text_area("Preview", content, height=180)
 
     if run_button and content:
@@ -90,7 +92,7 @@ with result_col:
         st.markdown(result)
         st.download_button("⬇️ Download Result", result.encode("utf-8"), file_name="result.txt", mime="text/plain")
 
-    st.markdown("""
+st.markdown("""
 ---
 ### 🔒 Privacy Note
 Your document is processed securely in-memory only. No content is stored or shared.
