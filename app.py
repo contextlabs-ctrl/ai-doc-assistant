@@ -10,7 +10,7 @@ st.title("📄 AI Document Assistant")
 st.markdown("Upload a document and use AI to summarize or ask questions — powered by multiple LLMs.")
 
 # --- Layout ---
-control_col, display_col = st.columns([1, 1])
+display_col = st.columns([2])
 
 # --- Sidebar as Control Panel ---
 with st.sidebar:
@@ -43,7 +43,7 @@ with display_col:
 
     with desc_col:
         st.subheader("📊 How This Assistant Works")
-        st.image("/mount/src/ai-doc-assistant/static/ai-process-diagram.png", use_column_width=True)
+        st.image("/mount/src/ai-doc-assistant/static/ai-process-diagram.png", use_container_width=True)
         st.markdown("""
 **Step-by-step process:**
 1. You upload a file or paste a URL.
