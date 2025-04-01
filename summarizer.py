@@ -1,78 +1,79 @@
 import requests
+import openai
 from config import Config
 
-
 class Summarizer:
-    STYLES = {
-        "Bullet points (concise)": "Summarize the following in concise bullet points:",
-        "Detailed paragraph": "Provide a detailed paragraph summary of the following:",
-        "Executive summary (formal)": "Provide a professional executive summary of the following:"
-    }
+    def __init__(self, model_choice):
+        self.model_info = Config.LLM_MODELS[model_choice]
+        self.api_url = self.model_info["api_url"]
+        self.headers = self.model_info["headers"]
+        self.model_type = self.model_info["type"]
+        self.model_name = self.model_info.get("model_name", None)
 
-    @staticmethod
-    def summarize(text, style, model_choice):
-        prompt = f"{Summarizer.STYLES[style]}\n\n{text}\n\nSummary:"
-        model_config = Config.LLM_MODELS[model_choice]
-
-        if model_config["type"] == "huggingface":
-            payload = {"inputs": prompt, "parameters": {"max_new_tokens": 600}}
-            response = requests.post(
-                model_config["api_url"],
-                headers=model_config["headers"],
-                json=payload
-            )
-            if response.status_code == 200:
-                output = response.json()[0]['generated_text']
-                return output.split("Summary:")[-1].strip()
+    def summarize(self, prompt):
+        try:
+            if self.model_type == "openai":
+                return self._openai_request(prompt)
+            elif self.model_type == "deepseek":
+                return self._deepseek_request(prompt)
+            elif self.model_type == "huggingface":
+                return self._huggingface_request(prompt)
             else:
-                return f"Error: {response.status_code} - {response.text}"
+                return "Model type not supported."
+        except Exception as e:
+            return f"Error: {str(e)}"
 
-        elif model_config["type"] == "openai":
-            payload = {
-                "model": model_config["model_name"],
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.3
-            }
-            response = requests.post(
-                model_config["api_url"],
-                headers=model_config["headers"],
-                json=payload
+    def _openai_request(self, prompt):
+        openai.api_key = Config.OPENAI_API_KEY
+        try:
+            response = openai.ChatCompletion.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.5,
+                max_tokens=500
             )
-            if response.status_code == 200:
-                output = response.json()
-                return output["choices"][0]["message"]["content"].strip()
-            else:
-                return f"Error: {response.status_code} - {response.text}"
+            return response.choices[0].message.content.strip()
+        except openai.error.RateLimitError:
+            return "OpenAI API rate limit exceeded. Try again later."
+        except openai.error.AuthenticationError:
+            return "OpenAI authentication failed. Verify your API key."
+        except openai.error.OpenAIError as e:
+            return f"OpenAI API Error: {str(e)}"
 
+    def _deepseek_request(self, prompt):
+        data = {
+            "model": self.model_name,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.5,
+            "max_tokens": 500
+        }
+        try:
+            response = requests.post(self.api_url, headers=self.headers, json=data, timeout=15)
+            response.raise_for_status()
+            result = response.json()
+            return result['choices'][0]['message']['content'].strip()
+        except requests.exceptions.HTTPError as e:
+            return f"DeepSeek HTTP Error: {str(e)}"
+        except requests.exceptions.Timeout:
+            return "DeepSeek API timeout. Please retry shortly."
+        except requests.exceptions.RequestException as e:
+            return f"DeepSeek Request Error: {str(e)}"
 
-        elif model_config["type"] == "deepseek":
-
-            payload = {
-
-                "model": model_config["model_name"],
-
-                "messages": [{"role": "user", "content": prompt}],
-
-                "temperature": 0.7
-
-            }
-
-            response = requests.post(
-
-                model_config["api_url"],
-
-                headers=model_config["headers"],
-
-                json=payload
-
-            )
-
-            if response.status_code == 200:
-
-                data = response.json()
-
-                return data["choices"][0]["message"]["content"].strip()
-
-            else:
-
-                return f"Error: {response.status_code} - {response.text}"
+    def _huggingface_request(self, prompt):
+        data = {
+            "inputs": prompt,
+            "parameters": {"max_length": 500, "temperature": 0.5},
+        }
+        try:
+            response = requests.post(self.api_url, headers=self.headers, json=data, timeout=15)
+            response.raise_for_status()
+            result = response.json()
+            if isinstance(result, dict) and result.get('error'):
+                return f"HuggingFace API Error: {result['error']}"
+            return result[0]['generated_text'].strip()
+        except requests.exceptions.HTTPError as e:
+            return f"HuggingFace HTTP Error: {str(e)}"
+        except requests.exceptions.Timeout:
+            return "HuggingFace API timeout. Please retry shortly."
+        except requests.exceptions.RequestException as e:
+            return f"HuggingFace Request Error: {str(e)}"
