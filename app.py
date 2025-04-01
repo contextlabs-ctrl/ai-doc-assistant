@@ -12,8 +12,9 @@ st.markdown("Upload a document and use AI to summarize or ask questions — powe
 # --- Layout ---
 left_col, right_col = st.columns([1, 2])
 
-with left_col:
-    st.sidebar.header("🧩 Control Panel")
+# --- Sidebar as Control Panel ---
+with st.sidebar:
+    st.header("🧩 Control Panel")
     demo_mode = st.checkbox("Enable Demo Mode (no API cost)", value=True)
 
     upload_type = st.radio("Input Type", ["Upload File", "Enter URL"])
@@ -36,6 +37,7 @@ with left_col:
 
     run_button = st.button("🚀 Run Task")
 
+# --- Main Display ---
 with right_col:
     content = ""
     if uploaded_file or url:
