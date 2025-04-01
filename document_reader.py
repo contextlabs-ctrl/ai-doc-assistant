@@ -26,11 +26,13 @@ class DocumentReader:
 
     @staticmethod
     def _extract_pdf(file):
-        content = ""
+        text = ""
         with pdfplumber.open(file) as pdf:
             for page in pdf.pages:
-                content += page.extract_text() or ""
-        return content.strip()
+                content = page.extract_text()
+                if content:
+                    text += content + "\n"
+        return DocumentReader._clean_pdf_text(text)
 
     @staticmethod
     def _extract_docx(file):
@@ -42,8 +44,31 @@ class DocumentReader:
 
     @staticmethod
     def _extract_from_url(url):
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
-        text = soup.get_text(separator='\n')
-        lines = [line.strip() for line in text.splitlines() if line.strip()]
-        return "\n".join(lines)
+        try:
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.content, 'html.parser')
+            text = soup.get_text(separator='\n')
+            lines = [line.strip() for line in text.splitlines() if line.strip()]
+            return "\n".join(lines)
+        except Exception as e:
+            return f"Failed to fetch content from URL: {e}"
+
+    @staticmethod
+    def _clean_pdf_text(text):
+        lines = text.split("\n")
+        filtered = []
+
+        skip_keywords = ["journal", "doi", "received", "abstract", "keywords", "references", "copyright"]
+        end_keywords = ["references", "acknowledgment", "bibliography"]
+
+        end_section = False
+        for line in lines:
+            lower_line = line.strip().lower()
+            if any(k in lower_line for k in end_keywords):
+                end_section = True
+            if not end_section and not any(k in lower_line for k in skip_keywords):
+                if len(line.strip()) > 0:
+                    filtered.append(line.strip())
+
+        return "\n".join(filtered)
