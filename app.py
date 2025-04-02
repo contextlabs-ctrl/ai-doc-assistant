@@ -43,7 +43,7 @@ desc_col, result_col = st.columns([1, 1])
 
 with desc_col:
     st.subheader("📊 How This Assistant Works")
-    st.image("/mount/src/ai-doc-assistant/static/ai-process-diagram.png", use_container_width=True)
+    st.image("./static/ai-process-diagram.png", use_container_width=True)
     st.markdown("""
 **Step-by-step process:**
 1. You upload a file or paste a URL.
@@ -58,9 +58,7 @@ No data is stored. Your content is processed temporarily and only shown to you.
 
 with result_col:
     content = ""
-    st.subheader("📄 Extracted Content")
-    st.text_area("Preview", content, height=180)
-    st.subheader("✅ Result")
+
     if uploaded_file or url:
         content = DocumentReader.extract_content(upload_type, uploaded_file if uploaded_file else url)
         content = content.strip()
@@ -68,14 +66,16 @@ with result_col:
             content = content[:4000] + "\n...[truncated]"
 
     if content:
+        st.subheader("📄 Extracted Content")
         st.text_area("Preview", content, height=180)
 
     if run_button and content:
         prompt_builder = PromptBuilder(task=task.lower(), doc_type=doc_type, use_case=use_case)
-        prompt = (
-            prompt_builder.generate((question, content)) if task == "Ask Question"
-            else prompt_builder.generate(content)
-        )
+        if task == "Ask Question":
+            combined = f"Based on the following document, answer the question.\n\nDocument:\n{content}\n\nQuestion:\n{question}"
+            prompt = prompt_builder.generate(combined)
+        else:
+            prompt = prompt_builder.generate(content)
 
         if demo_mode:
             st.info("Running in Demo Mode: This is a placeholder response.")

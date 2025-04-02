@@ -31,11 +31,11 @@ class Summarizer:
                 max_tokens=500,
             )
             return response.choices[0].message.content.strip()
-        except openai.error.AuthenticationError:
+        except openai.AuthenticationError:
             return "Error: OpenAI authentication failed. Check your API key."
-        except openai.error.RateLimitError:
+        except openai.RateLimitError:
             return "Error: OpenAI rate limit exceeded. Try again later."
-        except openai.error.OpenAIError as e:
+        except openai.OpenAIError as e:
             return f"Error: OpenAI API error — {str(e)}"
 
     def _deepseek(self, prompt):
@@ -50,7 +50,7 @@ class Summarizer:
                 self.api_url,
                 headers=self.headers,
                 json=data,
-                timeout=15
+                timeout=30
             )
             response.raise_for_status()
             result = response.json()
@@ -73,7 +73,7 @@ class Summarizer:
                 self.api_url,
                 headers=self.headers,
                 json=data,
-                timeout=15
+                timeout=30
             )
             response.raise_for_status()
             result = response.json()
