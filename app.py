@@ -1,4 +1,5 @@
 import streamlit as st
+import datetime
 from document_reader import DocumentReader
 from summarizer import Summarizer
 from prompt_builder import PromptBuilder
@@ -9,8 +10,23 @@ st.set_page_config(page_title="AI Document Assistant", layout="wide")
 st.title("📄 AI Document Assistant")
 st.markdown("Upload a document and use AI to summarize or ask questions — powered by multiple LLMs.")
 
-# --- Layout ---
-# control_col, display_col = st.columns([0,2])
+# --- API usage control ---
+MAX_DAILY_CALLS = 100
+MAX_SESSION_CALLS = 5
+
+today = datetime.date.today()
+if 'usage_date' not in st.session_state or st.session_state.usage_date != today:
+    st.session_state.usage_date = today
+    st.session_state.api_calls_today = 0
+    st.session_state.api_calls_session = 0
+
+def can_call_api():
+    return (st.session_state.api_calls_today < MAX_DAILY_CALLS and
+            st.session_state.api_calls_session < MAX_SESSION_CALLS)
+
+def record_api_call():
+    st.session_state.api_calls_today += 1
+    st.session_state.api_calls_session += 1
 
 # --- Sidebar as Control Panel ---
 with st.sidebar:
@@ -38,7 +54,6 @@ with st.sidebar:
     run_button = st.button("🚀 Run Task")
 
 # --- Main Display ---
-# with display_col:
 desc_col, result_col = st.columns([1, 1])
 
 with desc_col:
@@ -70,27 +85,31 @@ with result_col:
         st.text_area("Preview", content, height=180)
 
     if run_button and content:
-        prompt_builder = PromptBuilder(task=task.lower(), doc_type=doc_type, use_case=use_case)
-        if task == "Ask Question":
-            combined = f"Based on the following document, answer the question.\n\nDocument:\n{content}\n\nQuestion:\n{question}"
-            prompt = prompt_builder.generate(combined)
+        if not demo_mode and not can_call_api():
+            st.error("🚫 Usage limit reached. Try again later or enable Demo Mode.")
         else:
-            prompt = prompt_builder.generate(content)
+            prompt_builder = PromptBuilder(task=task.lower(), doc_type=doc_type, use_case=use_case)
+            if task == "Ask Question":
+                combined = f"Based on the following document, answer the question.\n\nDocument:\n{content}\n\nQuestion:\n{question}"
+                prompt = prompt_builder.generate(combined)
+            else:
+                prompt = prompt_builder.generate(content)
 
-        if demo_mode:
-            st.info("Running in Demo Mode: This is a placeholder response.")
-            result = "This is a demo response. Contact ali@contextlabs.dev for the full version with real LLM outputs."
-        else:
-            with st.spinner(f"Running {task} using {model_choice}..."):
-                summarizer = Summarizer(model_choice)
-                result = summarizer.summarize(prompt)
+            if demo_mode:
+                st.info("Running in Demo Mode: This is a placeholder response.")
+                result = "This is a demo response. Contact ali@contextlabs.dev for the full version with real LLM outputs."
+            else:
+                with st.spinner(f"Running {task} using {model_choice}..."):
+                    summarizer = Summarizer(model_choice)
+                    result = summarizer.summarize(prompt)
+                    record_api_call()
 
-            if result.lower().startswith("error"):
-                st.error("Model temporarily unavailable. Try again or select another model.")
+                if result.lower().startswith("error"):
+                    st.error("Model temporarily unavailable. Try again or select another model.")
 
-        st.subheader("✅ Result")
-        st.markdown(result)
-        st.download_button("⬇️ Download Result", result.encode("utf-8"), file_name="result.txt", mime="text/plain")
+            st.subheader("✅ Result")
+            st.markdown(result)
+            st.download_button("⬇️ Download Result", result.encode("utf-8"), file_name="result.txt", mime="text/plain")
 
 st.markdown("""
 ---
